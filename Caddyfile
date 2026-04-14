@@ -1,0 +1,5 @@
+:8080 {
+    root * .
+    file_server
+    try_files {path} /persona-generator_5---a723d6b4-5c3f-4461-aee2-20c2690e4c40.html
+}
