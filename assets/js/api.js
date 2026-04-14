@@ -7,15 +7,14 @@ class APIClient {
   constructor() {
     this.retryAttempts = 1;
     this.retryDelay = 1000;
-    this.defaultApiKey = 'sk-cp-XcP47OfWuVXPhIg0hX7GSRAbOyjolof68-AfBoM56SOHAzG_sb8V8lRQ2RYYIU4nf_SIjeQkvO7j8UxhG6-pZv5SFElH0o4bysNVtIrXz5HzrHEnqSdyGl0';
   }
 
   get apiKey() {
-    return store.get('apiKey') || this.defaultApiKey;
+    return store.get('apiKey') || '';
   }
 
   get provider() {
-    return store.get('apiProvider') || 'minimax';
+    return store.get('apiProvider') || 'deepseek';
   }
 
   get baseURL() {

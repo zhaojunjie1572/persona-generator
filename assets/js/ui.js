@@ -545,7 +545,7 @@ class UIManager {
   saveSettings() {
     const apiKey = document.getElementById('apiKeyInput')?.value.trim();
     const proxy = document.getElementById('apiProxyInput')?.value.trim();
-    const provider = store.get('apiProvider') || 'minimax';
+    const provider = store.get('apiProvider') || 'deepseek';
     let model = document.getElementById('modelNameInput')?.value.trim();
 
     if (!model) {

@@ -91,8 +91,8 @@ const store = new Store({
   // API Settings
   apiKey: localStorage.getItem('charrole_api_key') || '',
   apiProxy: localStorage.getItem('charrole_api_proxy') || '',
-  apiProvider: localStorage.getItem('charrole_api_provider') || 'minimax',
-  modelName: localStorage.getItem('charrole_model') || 'MiniMax-M2.7',
+  apiProvider: localStorage.getItem('charrole_api_provider') || 'deepseek',
+  modelName: localStorage.getItem('charrole_model') || 'deepseek-chat',
   apiStatus: 'none', // 'none' | 'ok' | 'error'
   
   // Current Persona

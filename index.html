@@ -153,14 +153,14 @@
             API 提供商
           </label>
           <div style="display: flex; gap: 8px; margin-top: 5px;">
-            <button class="chip chip--active" id="providerMinimax" onclick="ui.setProvider('minimax')">MiniMax</button>
-            <button class="chip" id="providerDeepseek" onclick="ui.setProvider('deepseek')">DeepSeek</button>
+            <button class="chip" id="providerMinimax" onclick="ui.setProvider('minimax')">MiniMax</button>
+            <button class="chip chip--active" id="providerDeepseek" onclick="ui.setProvider('deepseek')">DeepSeek</button>
           </div>
         </div>
         
         <div class="form-group" style="margin-bottom: 16px;">
           <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;" id="apiKeyLabel">
-            MiniMax API Key
+            DeepSeek API Key
           </label>
           <input type="password" class="input" id="apiKeyInput" placeholder="输入你的 API Key">
           <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
@@ -174,7 +174,7 @@
           </label>
           <input type="text" class="input" id="apiProxyInput" placeholder="留空使用默认">
           <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;" id="proxyHint">
-            DeepSeek 留空使用 api.deepseek.com
+            留空使用 api.deepseek.com
           </p>
         </div>
         
@@ -182,7 +182,7 @@
           <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
             模型名称
           </label>
-          <input type="text" class="input" id="modelNameInput" placeholder="默认: MiniMax-M2.7" value="MiniMax-M2.7">
+          <input type="text" class="input" id="modelNameInput" placeholder="默认: deepseek-chat" value="deepseek-chat">
         </div>
       </div>
       
@@ -298,9 +298,9 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="assets/js/state.js?v=20260414121000"></script>
-  <script src="assets/js/api.js?v=20260414121000"></script>
-  <script src="assets/js/ui.js?v=20260414121000"></script>
+  <script src="assets/js/state.js?v=20260414122000"></script>
+  <script src="assets/js/api.js?v=20260414122000"></script>
+  <script src="assets/js/ui.js?v=20260414122000"></script>
   
   <script>
     // Initialize app
