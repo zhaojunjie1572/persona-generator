@@ -120,6 +120,7 @@ const store = new Store({
   debateTopic: '',
   debateMessages: [],
   isDebateActive: false,
+  debateMode: false,
   
   // UI State
   activeModal: null,

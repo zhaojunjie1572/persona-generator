@@ -176,6 +176,9 @@ class UIManager {
       this.showToast('人物生成成功！', 'success');
     } catch (error) {
       this.showToast(error.message, 'error');
+    } finally {
+      store.set('isGenerating', false);
+      store.set('generationProgress', '');
     }
   }
 
@@ -645,6 +648,7 @@ class UIManager {
 
     store.set('debateParticipants', [{ ...persona, isBase: true }]);
     store.set('debateRounds', 1);
+    store.set('debateMode', true);
     
     this.renderDebateParticipants();
     this.openModal('debateModal');
@@ -705,6 +709,15 @@ class UIManager {
 
   openSavedDrawer() {
     store.set('activeGroup', '全部');
+    store.set('debateMode', false);
+    this.renderSavedList();
+    this.renderGroupTabs();
+    this.openDrawer('savedDrawer');
+  }
+
+  openSavedDrawerForDebate() {
+    store.set('activeGroup', '全部');
+    store.set('debateMode', true);
     this.renderSavedList();
     this.renderGroupTabs();
     this.openDrawer('savedDrawer');
@@ -736,6 +749,9 @@ class UIManager {
     if (!container) return;
 
     const filtered = store.get('filteredPersonas');
+    const isDebateMode = store.get('debateMode');
+    const debateParticipants = store.get('debateParticipants') || [];
+    const debateIds = new Set(debateParticipants.map(p => p.id));
 
     if (filtered.length === 0) {
       container.innerHTML = `
@@ -748,17 +764,19 @@ class UIManager {
       return;
     }
 
-    container.innerHTML = filtered.map(p => `
-      <div class="saved-item" onclick="ui.loadSavedPersona('${p.id}')">
+    container.innerHTML = filtered.map(p => {
+      const isAdded = debateIds.has(p.id);
+      return `
+      <div class="saved-item" onclick="${isDebateMode ? (isAdded ? '' : `ui.addPersonaToDebate('${p.id}')`) : `ui.loadSavedPersona('${p.id}')`}">
         <span class="drag-handle">⋮⋮</span>
         <span class="emoji">${p.emoji}</span>
         <div class="info">
-          <div class="name">${p.name}</div>
+          <div class="name">${p.name}${isDebateMode && isAdded ? ' ✓' : ''}</div>
           <div class="date">${p.group || '默认'} · ${this.formatDate(p.savedAt)}</div>
         </div>
-        <button class="delete-btn" onclick="event.stopPropagation(); ui.deleteSavedPersona('${p.id}')">🗑️</button>
+        ${!isDebateMode ? `<button class="delete-btn" onclick="event.stopPropagation(); ui.deleteSavedPersona('${p.id}')">🗑️</button>` : ''}
       </div>
-    `).join('');
+    `}).join('');
   }
 
   loadSavedPersona(id) {
@@ -782,6 +800,24 @@ class UIManager {
       this.renderSavedList();
       this.showToast('已删除', 'success');
     }
+  }
+
+  addPersonaToDebate(id) {
+    const saved = store.get('savedPersonas');
+    const persona = saved.find(p => p.id === id);
+    if (!persona) return;
+
+    const participants = store.get('debateParticipants') || [];
+    const exists = participants.some(p => p.id === persona.id);
+    
+    if (!exists) {
+      participants.push({ ...persona, isBase: false });
+      store.set('debateParticipants', participants);
+      this.showToast(`已添加：${persona.name}`, 'success');
+    }
+    
+    this.renderSavedList();
+    this.renderDebateParticipants();
   }
 
   /**

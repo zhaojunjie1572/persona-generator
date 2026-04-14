@@ -149,7 +149,6 @@ class APIClient {
 
       store.set('generationProgress', '正在解析结果...');
       
-      // Extract JSON from response
       const content = response.content;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       
@@ -159,7 +158,6 @@ class APIClient {
 
       const persona = JSON.parse(jsonMatch[0]);
       
-      // Add metadata
       persona.id = this.generateId();
       persona.createdAt = new Date().toISOString();
       persona.avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(persona.name)}&backgroundColor=b6e3f4`;
