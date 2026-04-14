@@ -1,9 +1,307 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta http-equiv="refresh" content="0; url=persona-generator_5---a723d6b4-5c3f-4461-aee2-20c2690e4c40.html">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI人物重现器 - 创建、保存和与任何人物对话">
+  <meta name="theme-color" content="#0a0a1a">
+  
+  <title>🎭 AI人物重现器 - CharRole</title>
+  
+  <!-- Preconnect -->
+  <link rel="preconnect" href="https://api.dicebear.com">
+  <link rel="preconnect" href="https://api.minimax.chat">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="assets/css/design-system.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
 </head>
 <body>
-    <p>Redirecting...</p>
+  <div class="app">
+    <!-- Background -->
+    <div class="app-background"></div>
+    
+    <!-- Header -->
+    <header class="header">
+      <div class="header__content">
+        <div class="header__brand">
+          <span class="header__logo">🎭</span>
+          <h1 class="header__title">AI人物重现器</h1>
+          <span class="badge badge--neutral" id="apiStatus">未配置</span>
+        </div>
+        <div class="header__actions">
+          <button class="btn btn--ghost btn--sm" onclick="ui.openSavedDrawer()">
+            📚 已保存 (<span id="savedCount">0</span>)
+          </button>
+          <button class="btn btn--ghost btn--sm" onclick="document.getElementById('fileImport').click()">
+            📥 导入
+          </button>
+          <input type="file" id="fileImport" accept=".json" hidden onchange="ui.importPersonaFile(event)">
+          <button class="btn btn--icon btn--ghost" onclick="ui.openSettings()" title="设置">
+            ⚙️
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="container">
+        <!-- Hero -->
+        <section class="hero">
+          <h2 class="hero__title">让任何人物栩栩如生</h2>
+          <p class="hero__subtitle">输入任意人物、职业或角色名称，AI 将为你创建完整的角色设定</p>
+        </section>
+
+        <!-- Search -->
+        <section class="search-section">
+          <div class="search-box">
+            <input 
+              type="text" 
+              class="search-box__input" 
+              id="searchInput" 
+              placeholder="输入任意人物：曹操、马斯克、律师、医生..."
+              autocomplete="off"
+            >
+            <button class="btn btn--primary search-box__btn" id="generateBtn" onclick="ui.generatePersona()">
+              🔮 生成
+            </button>
+          </div>
+          
+          <div class="quick-tags">
+            <span class="quick-tags__label">热门：</span>
+            <button class="chip" onclick="ui.elements.searchInput.value='爱因斯坦';ui.generatePersona()">爱因斯坦</button>
+            <button class="chip" onclick="ui.elements.searchInput.value='乔布斯';ui.generatePersona()">乔布斯</button>
+            <button class="chip" onclick="ui.elements.searchInput.value='诸葛亮';ui.generatePersona()">诸葛亮</button>
+            <button class="chip" onclick="ui.elements.searchInput.value='心理咨询师';ui.generatePersona()">心理咨询师</button>
+            <button class="chip" onclick="ui.elements.searchInput.value=' Sherlock Holmes';ui.generatePersona()">福尔摩斯</button>
+          </div>
+        </section>
+
+        <!-- Loading -->
+        <div class="loading" id="loadingArea">
+          <div class="spinner spinner--lg"></div>
+          <p>正在生成人物设定...</p>
+          <p class="progress" id="progressText">准备中...</p>
+        </div>
+
+        <!-- Results -->
+        <section class="results-section" id="resultArea"></section>
+      </div>
+    </main>
+
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chatPanel">
+      <div class="chat-panel__header">
+        <div class="chat-panel__info">
+          <div class="avatar avatar--md avatar--bordered" id="chatAvatar">🎭</div>
+          <div>
+            <div class="chat-panel__name" id="chatName">人物名称</div>
+            <div class="chat-panel__status">在线</div>
+          </div>
+        </div>
+        <div class="chat-panel__actions">
+          <button class="btn btn--icon btn--ghost" onclick="ui.toggleChatSettings()" title="设置">⚙️</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.exportChat()" title="导出">📤</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.clearChat()" title="清空">🗑️</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.toggleChat()" title="关闭">✕</button>
+        </div>
+      </div>
+      
+      <div class="chat-panel__messages" id="chatMessages"></div>
+      
+      <div class="chat-panel__input">
+        <div class="chat-input">
+          <textarea 
+            class="chat-input__field" 
+            id="chatInput" 
+            placeholder="输入消息... (Enter发送, Shift+Enter换行)"
+            rows="1"
+          ></textarea>
+          <button class="btn btn--primary btn--icon" id="sendBtn" onclick="ui.sendMessage()">
+            ➤
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>🎭 AI人物重现器 | CharRole Platform | Powered by MiniMax</p>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">⚙️ API 设置</h3>
+        <button class="modal__close" onclick="ui.closeModal()">×</button>
+      </div>
+      
+      <div class="modal__body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            MiniMax API Key
+          </label>
+          <input type="password" class="input" id="apiKeyInput" placeholder="输入你的 API Key">
+          <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
+            API Key 仅保存在浏览器本地
+          </p>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            API 代理地址（可选）
+          </label>
+          <input type="text" class="input" id="apiProxyInput" placeholder="留空使用默认">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            模型名称
+          </label>
+          <input type="text" class="input" id="modelNameInput" placeholder="默认: MiniMax-M2.7" value="MiniMax-M2.7">
+        </div>
+      </div>
+      
+      <div class="modal__footer" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn--ghost" onclick="ui.closeModal()">取消</button>
+        <button class="btn btn--secondary" onclick="ui.testApi()">测试连接</button>
+        <button class="btn btn--primary" onclick="ui.saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save Modal -->
+  <div class="modal-overlay" id="saveModal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">💾 保存人物</h3>
+        <button class="modal__close" onclick="ui.closeModal()">×</button>
+      </div>
+      
+      <div class="modal__body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            人物名称
+          </label>
+          <input type="text" class="input" id="saveNameInput" readonly>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            选择分组
+          </label>
+          <div id="groupSelector" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            新建分组
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" class="input" id="newGroupInput" placeholder="输入分组名称...">
+            <button class="btn btn--primary" onclick="ui.createNewGroup()">+ 新建</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal__footer" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn--ghost" onclick="ui.closeModal()">取消</button>
+        <button class="btn btn--primary" onclick="ui.confirmSavePersona()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debate Modal -->
+  <div class="modal-overlay" id="debateModal">
+    <div class="modal" style="max-width: 550px;">
+      <div class="modal__header">
+        <h3 class="modal__title">🔥 多角色论道</h3>
+        <button class="modal__close" onclick="ui.closeModal()">×</button>
+      </div>
+      
+      <div class="modal__body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            论道主题 / 问题
+          </label>
+          <input type="text" class="input" id="debateTopic" placeholder="例如：人工智能是否会取代人类？">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            参与角色（当前人物已加入）
+          </label>
+          <div id="debateParticipantChips" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;"></div>
+          <div style="margin-top: 10px;">
+            <button class="btn btn--ghost btn--sm" onclick="ui.openSavedDrawerForDebate()">+ 从已保存添加</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+            论道轮数
+          </label>
+          <div style="display: flex; gap: 10px; margin-top: 5px;">
+            <button class="chip chip--active" id="round1Btn" onclick="ui.setDebateRounds(1)">1轮</button>
+            <button class="chip" id="round3Btn" onclick="ui.setDebateRounds(3)">3轮</button>
+            <button class="chip" id="round5Btn" onclick="ui.setDebateRounds(5)">5轮</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal__footer" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn--ghost" onclick="ui.closeModal()">取消</button>
+        <button class="btn btn--primary" onclick="ui.startDebate()">开始论道</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Drawer -->
+  <div class="drawer-overlay" id="savedDrawer">
+    <div class="drawer">
+      <div class="drawer__header">
+        <h3 class="drawer__title">📚 已保存的人物</h3>
+        <button class="modal__close" onclick="ui.closeDrawer()">×</button>
+      </div>
+      <div class="drawer__content">
+        <div id="groupTabs" style="margin-bottom: 16px;"></div>
+        <div id="savedList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="assets/js/state.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/ui.js"></script>
+  
+  <script>
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check for saved API key
+      if (store.get('apiKey')) {
+        api.testConnection().catch(() => {});
+      }
+      
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(console.error);
+      }
+    });
+  </script>
 </body>
 </html>
