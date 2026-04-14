@@ -133,6 +133,34 @@
       </div>
     </div>
 
+    <!-- Debate Chat Panel -->
+    <div class="chat-panel" id="debateChatPanel">
+      <div class="chat-panel__header">
+        <div class="chat-panel__info">
+          <div class="avatar avatar--md avatar--bordered">🔥</div>
+          <div>
+            <div class="chat-panel__name" id="debateChatName">多角色论道</div>
+            <div class="chat-panel__status" id="debateChatStatus">准备中...</div>
+          </div>
+        </div>
+        <div class="chat-panel__actions">
+          <button class="btn btn--icon btn--ghost" onclick="ui.stopDebate()" title="停止">⏹️</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.exportDebate()" title="导出">📤</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.toggleDebateChat()" title="关闭">✕</button>
+        </div>
+      </div>
+      
+      <div class="chat-panel__messages" id="debateChatMessages"></div>
+      
+      <div class="chat-panel__input" id="debateChatInput">
+        <div class="chat-input">
+          <button class="btn btn--primary" id="startDebateBtn" onclick="ui.runDebate()">
+            ▶️ 开始论道
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
       <p>🎭 AI人物重现器 | CharRole Platform | Powered by MiniMax</p>
@@ -311,9 +339,9 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="assets/js/state.js?v=20260414133000"></script>
-  <script src="assets/js/api.js?v=20260414133000"></script>
-  <script src="assets/js/ui.js?v=20260414133000"></script>
+  <script src="assets/js/state.js?v=20260414134000"></script>
+  <script src="assets/js/api.js?v=20260414134000"></script>
+  <script src="assets/js/ui.js?v=20260414134000"></script>
   
   <script>
     // Initialize app

@@ -31,12 +31,18 @@ class UIManager {
       // Results
       resultArea: document.getElementById('resultArea'),
       
-      // Chat
+      // Chat panel
       chatPanel: document.getElementById('chatPanel'),
       chatMessages: document.getElementById('chatMessages'),
       chatInput: document.getElementById('chatInput'),
       chatName: document.getElementById('chatName'),
       chatAvatar: document.getElementById('chatAvatar'),
+      
+      // Debate chat panel
+      debateChatPanel: document.getElementById('debateChatPanel'),
+      debateChatMessages: document.getElementById('debateChatMessages'),
+      debateChatStatus: document.getElementById('debateChatStatus'),
+      debateChatName: document.getElementById('debateChatName'),
       
       // Modals
       settingsModal: document.getElementById('settingsModal'),
@@ -133,6 +139,14 @@ class UIManager {
     // Chat state
     store.subscribe('isChatOpen', (isOpen) => {
       this.elements.chatPanel?.classList.toggle('chat-panel--open', isOpen);
+    });
+
+    // Debate chat state
+    store.subscribe('isDebateActive', (isActive) => {
+      this.elements.debateChatPanel?.classList.toggle('chat-panel--open', isActive);
+      if (isActive) {
+        this.renderDebateMessages();
+      }
     });
   }
 
@@ -743,7 +757,138 @@ class UIManager {
     store.set('isDebateActive', true);
 
     this.closeModal();
-    this.showToast('论道开始！（论道聊天功能开发中）', 'success');
+    
+    if (this.elements.debateChatName) {
+      this.elements.debateChatName.textContent = topic;
+    }
+    if (this.elements.debateChatStatus) {
+      this.elements.debateChatStatus.textContent = '准备就绪';
+    }
+    
+    this.showToast('论道已开始！点击 ▶️ 开始', 'success');
+  }
+
+  toggleDebateChat() {
+    store.set('isDebateActive', !store.get('isDebateActive'));
+  }
+
+  stopDebate() {
+    store.set('isDebateActive', false);
+    if (this.elements.debateChatStatus) {
+      this.elements.debateChatStatus.textContent = '已停止';
+    }
+    this.showToast('论道已停止', 'info');
+  }
+
+  async runDebate() {
+    const participants = store.get('debateParticipants');
+    const topic = store.get('debateTopic');
+    const totalRounds = store.get('debateRounds');
+    let messages = store.get('debateMessages');
+    let currentRound = store.get('debateCurrentRound');
+
+    if (currentRound >= totalRounds) {
+      this.showToast('论道已完成！', 'info');
+      return;
+    }
+
+    if (this.elements.debateChatStatus) {
+      this.elements.debateChatStatus.textContent = `论道中... 第 ${currentRound + 1}/${totalRounds} 轮`;
+    }
+
+    for (let round = currentRound; round < totalRounds; round++) {
+      for (let i = 0; i < participants.length; i++) {
+        const persona = participants[i];
+        
+        if (this.elements.debateChatStatus) {
+          this.elements.debateChatStatus.textContent = `${persona.name} 思考中...`;
+        }
+
+        try {
+          const response = await api.generateDebateMessage(
+            persona, 
+            topic, 
+            round + 1, 
+            messages
+          );
+          
+          const newMessage = {
+            persona: persona,
+            text: response,
+            round: round + 1,
+            timestamp: Date.now()
+          };
+          
+          messages.push(newMessage);
+          store.set('debateMessages', [...messages]);
+          this.renderDebateMessages();
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error) {
+          console.error('Debate error:', error);
+          this.showToast(`${persona.name} 发言失败`, 'error');
+        }
+      }
+      
+      currentRound = round + 1;
+      store.set('debateCurrentRound', currentRound);
+    }
+
+    if (this.elements.debateChatStatus) {
+      this.elements.debateChatStatus.textContent = '论道完成！';
+    }
+    this.showToast('论道完成！', 'success');
+  }
+
+  renderDebateMessages() {
+    if (!this.elements.debateChatMessages) return;
+
+    const messages = store.get('debateMessages');
+
+    if (messages.length === 0) {
+      this.elements.debateChatMessages.innerHTML = `
+        <div class="empty-state" style="text-align: center; margin-top: 60px;">
+          <div class="empty-state__icon">💬</div>
+          <div class="empty-state__title">论道尚未开始</div>
+          <div class="empty-state__description">点击 ▶️ 开始按钮开始论道</div>
+        </div>
+      `;
+      return;
+    }
+
+    const html = messages.map((msg, i) => `
+      <div class="chat-message">
+        <div class="chat-message__avatar">${msg.persona?.emoji || '🎭'}</div>
+        <div class="chat-message__content">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-weight: 600; color: var(--color-accent-gold);">${msg.persona?.name || '角色'}</span>
+            <span style="font-size: var(--text-xs); color: var(--text-muted);">第 ${msg.round} 轮</span>
+          </div>
+          <div class="chat-message__text">${this.formatMessage(msg.text)}</div>
+          <div class="chat-message__time">${this.formatTime(msg.timestamp)}</div>
+        </div>
+      </div>
+    `).join('');
+
+    this.elements.debateChatMessages.innerHTML = html;
+    this.elements.debateChatMessages.scrollTop = this.elements.debateChatMessages.scrollHeight;
+  }
+
+  exportDebate() {
+    const messages = store.get('debateMessages');
+    const topic = store.get('debateTopic');
+    
+    if (messages.length === 0) {
+      this.showToast('论道尚未开始', 'warning');
+      return;
+    }
+
+    const content = `主题：${topic}\n\n` + messages.map(m => 
+      `${m.persona?.name} (第${m.round}轮)：\n${m.text}`
+    ).join('\n\n---\n\n');
+
+    this.downloadFile(content, `debate-${topic.replace(/[^\w\u4e00-\u9fa5]/g, '_')}.txt`, 'text/plain');
   }
 
   renderDebateParticipants() {
@@ -996,8 +1141,9 @@ class UIManager {
       .replace(/\n/g, '<br>');
   }
 
-  formatTime() {
-    return new Date().toLocaleTimeString('zh-CN', { 
+  formatTime(timestamp) {
+    const date = timestamp ? new Date(timestamp) : new Date();
+    return date.toLocaleTimeString('zh-CN', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
