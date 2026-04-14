@@ -31,11 +31,21 @@ class APIClient {
     }
 
     try {
-      const response = await fetch(`${this.proxy}/v1/models`, {
-        method: 'GET',
+      // MiniMax uses a simple completion to test connection
+      const response = await fetch(`${this.proxy}/v1/text/chatcompletion_v2`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
-        }
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'Hi' }
+          ],
+          max_tokens: 10
+        })
       });
 
       if (!response.ok) {
@@ -246,7 +256,7 @@ ${context}
     
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
-        const response = await fetch(`${this.proxy}/v1/messages`, {
+        const response = await fetch(`${this.proxy}/v1/text/chatcompletion_v2`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -267,15 +277,20 @@ ${context}
 
         const result = await response.json();
         
-        // Handle different response formats
+        // MiniMax response format: result.choices[0].message.content
         let content = '';
-        if (Array.isArray(result.content)) {
-          const textContent = result.content.find(c => c.type === 'text');
-          content = textContent?.text || result.content[0]?.text || '';
-        } else if (result.content?.text) {
-          content = result.content.text;
-        } else if (typeof result.content === 'string') {
-          content = result.content;
+        if (result.choices && result.choices[0] && result.choices[0].message) {
+          content = result.choices[0].message.content || '';
+        } else if (result.content) {
+          // Fallback for other formats
+          if (Array.isArray(result.content)) {
+            const textContent = result.content.find(c => c.type === 'text');
+            content = textContent?.text || result.content[0]?.text || '';
+          } else if (result.content.text) {
+            content = result.content.text;
+          } else if (typeof result.content === 'string') {
+            content = result.content;
+          }
         }
 
         return { content: content.trim(), raw: result };
