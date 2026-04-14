@@ -188,6 +188,9 @@ class UIManager {
   renderPersona(persona) {
     if (!this.elements.resultArea) return;
 
+    store.set('isGenerating', false);
+    store.set('generationProgress', '');
+
     const html = `
       <div class="persona-card">
         <div class="persona-card__header">
@@ -648,10 +651,70 @@ class UIManager {
 
     store.set('debateParticipants', [{ ...persona, isBase: true }]);
     store.set('debateRounds', 1);
-    store.set('debateMode', true);
     
     this.renderDebateParticipants();
     this.openModal('debateModal');
+  }
+
+  showPersonaSelector() {
+    const saved = store.get('savedPersonas');
+    const participants = store.get('debateParticipants') || [];
+    const participantIds = new Set(participants.map(p => p.id));
+    
+    const container = document.getElementById('personaSelectorList');
+    if (!container) return;
+
+    if (saved.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state__icon">📚</div>
+          <div class="empty-state__title">暂无保存的人物</div>
+          <div class="empty-state__description">生成人物后点击"保存"按钮添加到收藏</div>
+        </div>
+      `;
+    } else {
+      container.innerHTML = saved.map(p => {
+        const isAdded = participantIds.has(p.id);
+        return `
+          <div class="saved-item" style="cursor: ${isAdded ? 'not-allowed' : 'pointer'}; opacity: ${isAdded ? '0.5' : '1'}" 
+               onclick="${isAdded ? '' : `ui.addPersonaToDebate('${p.id}')`}">
+            <span class="emoji">${p.emoji}</span>
+            <div class="info">
+              <div class="name">${p.name}${isAdded ? ' ✓ 已添加' : ''}</div>
+              <div class="date">${p.group || '默认'}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    this.openModal('personaSelectorModal');
+  }
+
+  closePersonaSelector() {
+    const modal = document.getElementById('personaSelectorModal');
+    if (modal) {
+      modal.classList.remove('modal-overlay--visible');
+    }
+    store.set('activeModal', null);
+    document.body.style.overflow = '';
+  }
+
+  addPersonaToDebate(id) {
+    const saved = store.get('savedPersonas');
+    const persona = saved.find(p => p.id === id);
+    if (!persona) return;
+
+    const participants = store.get('debateParticipants') || [];
+    const exists = participants.some(p => p.id === persona.id);
+    
+    if (!exists) {
+      participants.push({ ...persona, isBase: false });
+      store.set('debateParticipants', participants);
+      this.closePersonaSelector();
+      this.renderDebateParticipants();
+      this.showToast(`已添加：${persona.name}`, 'success');
+    }
   }
 
   renderDebateParticipants() {
@@ -709,15 +772,6 @@ class UIManager {
 
   openSavedDrawer() {
     store.set('activeGroup', '全部');
-    store.set('debateMode', false);
-    this.renderSavedList();
-    this.renderGroupTabs();
-    this.openDrawer('savedDrawer');
-  }
-
-  openSavedDrawerForDebate() {
-    store.set('activeGroup', '全部');
-    store.set('debateMode', true);
     this.renderSavedList();
     this.renderGroupTabs();
     this.openDrawer('savedDrawer');
@@ -749,9 +803,6 @@ class UIManager {
     if (!container) return;
 
     const filtered = store.get('filteredPersonas');
-    const isDebateMode = store.get('debateMode');
-    const debateParticipants = store.get('debateParticipants') || [];
-    const debateIds = new Set(debateParticipants.map(p => p.id));
 
     if (filtered.length === 0) {
       container.innerHTML = `
@@ -764,19 +815,17 @@ class UIManager {
       return;
     }
 
-    container.innerHTML = filtered.map(p => {
-      const isAdded = debateIds.has(p.id);
-      return `
-      <div class="saved-item" onclick="${isDebateMode ? (isAdded ? '' : `ui.addPersonaToDebate('${p.id}')`) : `ui.loadSavedPersona('${p.id}')`}">
+    container.innerHTML = filtered.map(p => `
+      <div class="saved-item" onclick="ui.loadSavedPersona('${p.id}')">
         <span class="drag-handle">⋮⋮</span>
         <span class="emoji">${p.emoji}</span>
         <div class="info">
-          <div class="name">${p.name}${isDebateMode && isAdded ? ' ✓' : ''}</div>
+          <div class="name">${p.name}</div>
           <div class="date">${p.group || '默认'} · ${this.formatDate(p.savedAt)}</div>
         </div>
-        ${!isDebateMode ? `<button class="delete-btn" onclick="event.stopPropagation(); ui.deleteSavedPersona('${p.id}')">🗑️</button>` : ''}
+        <button class="delete-btn" onclick="event.stopPropagation(); ui.deleteSavedPersona('${p.id}')">🗑️</button>
       </div>
-    `}).join('');
+    `).join('');
   }
 
   loadSavedPersona(id) {

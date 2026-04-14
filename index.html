@@ -257,7 +257,7 @@
           </label>
           <div id="debateParticipantChips" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;"></div>
           <div style="margin-top: 10px;">
-            <button class="btn btn--ghost btn--sm" onclick="ui.openSavedDrawerForDebate()">+ 从已保存添加</button>
+            <button class="btn btn--ghost btn--sm" onclick="ui.showPersonaSelector()">+ 从已保存添加</button>
           </div>
         </div>
         
@@ -280,6 +280,19 @@
     </div>
   </div>
 
+  <!-- Persona Selector Modal -->
+  <div class="modal-overlay" id="personaSelectorModal">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal__header">
+        <h3 class="modal__title">📚 选择人物</h3>
+        <button class="modal__close" onclick="ui.closePersonaSelector()">×</button>
+      </div>
+      <div class="modal__body">
+        <div id="personaSelectorList" style="max-height: 400px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Saved Drawer -->
   <div class="drawer-overlay" id="savedDrawer">
     <div class="drawer">
@@ -298,9 +311,9 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="assets/js/state.js?v=20260414124000"></script>
-  <script src="assets/js/api.js?v=20260414124000"></script>
-  <script src="assets/js/ui.js?v=20260414124000"></script>
+  <script src="assets/js/state.js?v=20260414125000"></script>
+  <script src="assets/js/api.js?v=20260414125000"></script>
+  <script src="assets/js/ui.js?v=20260414125000"></script>
   
   <script>
     // Initialize app
