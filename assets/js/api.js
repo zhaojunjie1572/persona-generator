@@ -5,7 +5,8 @@
 
 class APIClient {
   constructor() {
-    this.baseURL = 'https://api.minimax.chat';
+    // MiniMax Token Plan uses api.minimax.io (not .chat)
+    this.baseURL = 'https://api.minimax.io';
     this.retryAttempts = 3;
     this.retryDelay = 1000;
   }
