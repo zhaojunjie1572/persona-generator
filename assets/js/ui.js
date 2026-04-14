@@ -505,18 +505,52 @@ class UIManager {
   }
 
   openSettings() {
-    // Populate settings
     document.getElementById('apiKeyInput') && (document.getElementById('apiKeyInput').value = store.get('apiKey'));
     document.getElementById('apiProxyInput') && (document.getElementById('apiProxyInput').value = store.get('apiProxy'));
     document.getElementById('modelNameInput') && (document.getElementById('modelNameInput').value = store.get('modelName'));
+
+    const provider = store.get('apiProvider') || 'minimax';
+    this.updateProviderUI(provider);
     
     this.openModal('settingsModal');
+  }
+
+  updateProviderUI(provider) {
+    const minimaxBtn = document.getElementById('providerMinimax');
+    const deepseekBtn = document.getElementById('providerDeepseek');
+    const apiKeyLabel = document.getElementById('apiKeyLabel');
+    const modelInput = document.getElementById('modelNameInput');
+    const proxyHint = document.getElementById('proxyHint');
+
+    if (provider === 'deepseek') {
+      minimaxBtn?.classList.remove('chip--active');
+      deepseekBtn?.classList.add('chip--active');
+      if (apiKeyLabel) apiKeyLabel.textContent = 'DeepSeek API Key';
+      if (modelInput) modelInput.placeholder = '默认: deepseek-chat';
+      if (proxyHint) proxyHint.textContent = '留空使用 api.deepseek.com';
+    } else {
+      minimaxBtn?.classList.add('chip--active');
+      deepseekBtn?.classList.remove('chip--active');
+      if (apiKeyLabel) apiKeyLabel.textContent = 'MiniMax API Key';
+      if (modelInput) modelInput.placeholder = '默认: MiniMax-M2.7';
+      if (proxyHint) proxyHint.textContent = 'MiniMax 留空使用默认代理';
+    }
+  }
+
+  setProvider(provider) {
+    store.set('apiProvider', provider);
+    this.updateProviderUI(provider);
   }
 
   saveSettings() {
     const apiKey = document.getElementById('apiKeyInput')?.value.trim();
     const proxy = document.getElementById('apiProxyInput')?.value.trim();
-    const model = document.getElementById('modelNameInput')?.value.trim() || 'MiniMax-M2.7';
+    const provider = store.get('apiProvider') || 'minimax';
+    let model = document.getElementById('modelNameInput')?.value.trim();
+
+    if (!model) {
+      model = provider === 'deepseek' ? 'deepseek-chat' : 'MiniMax-M2.7';
+    }
 
     store.set('apiKey', apiKey);
     store.set('apiProxy', proxy);

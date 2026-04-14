@@ -1,13 +1,10 @@
 /**
  * CharRole API Module
- * Handles all API interactions with MiniMax
+ * Handles all API interactions with MiniMax and DeepSeek
  */
 
 class APIClient {
   constructor() {
-    // 使用本地代理来避免CORS问题
-    // MiniMax Token Plan 使用 Anthropic 兼容格式
-    this.baseURL = '/minimax-api/anthropic';
     this.retryAttempts = 1;
     this.retryDelay = 1000;
     this.defaultApiKey = 'sk-cp-XcP47OfWuVXPhIg0hX7GSRAbOyjolof68-AfBoM56SOHAzG_sb8V8lRQ2RYYIU4nf_SIjeQkvO7j8UxhG6-pZv5SFElH0o4bysNVtIrXz5HzrHEnqSdyGl0';
@@ -17,12 +14,25 @@ class APIClient {
     return store.get('apiKey') || this.defaultApiKey;
   }
 
+  get provider() {
+    return store.get('apiProvider') || 'minimax';
+  }
+
+  get baseURL() {
+    if (this.provider === 'deepseek') {
+      return store.get('apiProxy') || 'https://api.deepseek.com';
+    }
+    return '/minimax-api/anthropic';
+  }
+
   get proxy() {
-    // 使用本地代理
     return this.baseURL;
   }
 
   get model() {
+    if (this.provider === 'deepseek') {
+      return store.get('modelName') || 'deepseek-chat';
+    }
     return store.get('modelName') || 'MiniMax-M2.7';
   }
 
@@ -35,24 +45,43 @@ class APIClient {
     }
 
     try {
-      // MiniMax Token Plan 使用 Anthropic 兼容格式
-      const response = await fetch(`${this.proxy}/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
-          max_tokens: 10
-        })
-      });
+      if (this.provider === 'deepseek') {
+        const response = await fetch(`${this.proxy}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 10
+          })
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error?.message || `HTTP ${response.status}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error?.message || `HTTP ${response.status}`);
+        }
+      } else {
+        const response = await fetch(`${this.proxy}/v1/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
+            max_tokens: 10
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error?.message || `HTTP ${response.status}`);
+        }
       }
 
       store.set('apiStatus', 'ok');
@@ -107,7 +136,8 @@ class APIClient {
 }`;
 
     try {
-      store.set('generationProgress', '正在调用 MiniMax API...');
+      const providerName = this.provider === 'deepseek' ? 'DeepSeek' : 'MiniMax';
+      store.set('generationProgress', `正在调用 ${providerName} API...`);
       
       const response = await this.chatCompletion([
         { role: 'system', content: '你是一个专业的角色设定生成器。' },
@@ -256,55 +286,84 @@ ${context}
     
     let lastError;
     
-    // Convert messages to Anthropic format if needed
-    const formattedMessages = messages.map(msg => {
-      if (typeof msg.content === 'string') {
-        return {
-          ...msg,
-          content: [{ type: 'text', text: msg.content }]
-        };
-      }
-      return msg;
-    });
-    
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
-        // MiniMax Token Plan 使用 Anthropic 兼容格式
-        const response = await fetch(`${this.proxy}/v1/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: this.model,
-            messages: formattedMessages,
-            temperature,
-            max_tokens: maxTokens
-          })
-        });
+        if (this.provider === 'deepseek') {
+          const response = await fetch(`${this.proxy}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+              model: this.model,
+              messages: messages.map(msg => {
+                if (Array.isArray(msg.content)) {
+                  return {
+                    ...msg,
+                    content: msg.content.find(c => c.type === 'text')?.text || ''
+                  };
+                }
+                return msg;
+              }),
+              temperature,
+              max_tokens: maxTokens
+            })
+          });
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error.error?.message || `HTTP ${response.status}`);
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+          const content = result.choices?.[0]?.message?.content || '';
+          return { content: content.trim(), raw: result };
+        } else {
+          const formattedMessages = messages.map(msg => {
+            if (typeof msg.content === 'string') {
+              return {
+                ...msg,
+                content: [{ type: 'text', text: msg.content }]
+              };
+            }
+            return msg;
+          });
+
+          const response = await fetch(`${this.proxy}/v1/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: this.model,
+              messages: formattedMessages,
+              temperature,
+              max_tokens: maxTokens
+            })
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error?.message || `HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+          
+          let content = '';
+          if (result.content && Array.isArray(result.content)) {
+            const textContent = result.content.find(c => c.type === 'text');
+            content = textContent?.text || '';
+          } else if (typeof result.content === 'string') {
+            content = result.content;
+          } else if (result.choices && result.choices[0]) {
+            content = result.choices[0].message?.content || result.choices[0].text || '';
+          }
+
+          return { content: content.trim(), raw: result };
         }
-
-        const result = await response.json();
-        
-        // Anthropic response format - content is an array of blocks
-        let content = '';
-        if (result.content && Array.isArray(result.content)) {
-          const textContent = result.content.find(c => c.type === 'text');
-          content = textContent?.text || '';
-        } else if (typeof result.content === 'string') {
-          content = result.content;
-        } else if (result.choices && result.choices[0]) {
-          // Fallback for OpenAI format
-          content = result.choices[0].message?.content || result.choices[0].text || '';
-        }
-
-        return { content: content.trim(), raw: result };
       } catch (error) {
         lastError = error;
         

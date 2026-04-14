@@ -91,6 +91,7 @@ const store = new Store({
   // API Settings
   apiKey: localStorage.getItem('charrole_api_key') || '',
   apiProxy: localStorage.getItem('charrole_api_proxy') || '',
+  apiProvider: localStorage.getItem('charrole_api_provider') || 'minimax',
   modelName: localStorage.getItem('charrole_model') || 'MiniMax-M2.7',
   apiStatus: 'none', // 'none' | 'ok' | 'error'
   
@@ -143,6 +144,10 @@ store.subscribe('apiKey', (value) => {
 store.subscribe('apiProxy', (value) => {
   if (value) localStorage.setItem('charrole_api_proxy', value);
   else localStorage.removeItem('charrole_api_proxy');
+});
+
+store.subscribe('apiProvider', (value) => {
+  localStorage.setItem('charrole_api_provider', value);
 });
 
 store.subscribe('modelName', (value) => {
