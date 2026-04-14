@@ -756,7 +756,12 @@ class UIManager {
     store.set('debateMessages', []);
     store.set('isDebateActive', true);
 
-    this.closeModal();
+    const debateModal = document.getElementById('debateModal');
+    if (debateModal) {
+      debateModal.classList.remove('modal-overlay--visible');
+    }
+    store.set('activeModal', null);
+    document.body.style.overflow = '';
     
     if (this.elements.debateChatName) {
       this.elements.debateChatName.textContent = topic;
