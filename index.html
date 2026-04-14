@@ -311,13 +311,17 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="assets/js/state.js?v=20260414125000"></script>
-  <script src="assets/js/api.js?v=20260414125000"></script>
-  <script src="assets/js/ui.js?v=20260414125000"></script>
+  <script src="assets/js/state.js?v=20260414130000"></script>
+  <script src="assets/js/api.js?v=20260414130000"></script>
+  <script src="assets/js/ui.js?v=20260414130000"></script>
   
   <script>
     // Initialize app
     document.addEventListener('DOMContentLoaded', () => {
+      // Force reset loading state on page load
+      store.set('isGenerating', false);
+      store.set('generationProgress', '');
+      
       // Check for saved API key
       if (store.get('apiKey')) {
         api.testConnection().catch(() => {});

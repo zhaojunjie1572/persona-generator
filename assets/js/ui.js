@@ -657,6 +657,11 @@ class UIManager {
   }
 
   showPersonaSelector() {
+    this.renderPersonaSelectorList();
+    this.openModal('personaSelectorModal');
+  }
+
+  renderPersonaSelectorList() {
     const saved = store.get('savedPersonas');
     const participants = store.get('debateParticipants') || [];
     const participantIds = new Set(participants.map(p => p.id));
@@ -687,8 +692,6 @@ class UIManager {
         `;
       }).join('');
     }
-
-    this.openModal('personaSelectorModal');
   }
 
   closePersonaSelector() {
@@ -715,6 +718,28 @@ class UIManager {
       this.renderDebateParticipants();
       this.showToast(`已添加：${persona.name}`, 'success');
     }
+  }
+
+  startDebate() {
+    const topic = document.getElementById('debateTopic')?.value.trim();
+    if (!topic) {
+      this.showToast('请输入论道主题', 'warning');
+      return;
+    }
+
+    const participants = store.get('debateParticipants');
+    if (participants.length < 1) {
+      this.showToast('至少需要一个角色', 'warning');
+      return;
+    }
+
+    store.set('debateTopic', topic);
+    store.set('debateCurrentRound', 0);
+    store.set('debateMessages', []);
+    store.set('isDebateActive', true);
+
+    this.closeModal();
+    this.showToast('论道开始！（论道聊天功能开发中）', 'success');
   }
 
   renderDebateParticipants() {
