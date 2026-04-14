@@ -5,19 +5,20 @@
 
 class APIClient {
   constructor() {
-    // MiniMax 国内版使用 api.minimaxi.com
-    // 国际版使用 api.minimax.io
-    this.baseURL = 'https://api.minimaxi.com';
-    this.retryAttempts = 3;
+    // 使用本地代理来避免CORS问题
+    this.baseURL = '/minimax-api/anthropic';
+    this.retryAttempts = 1; // 减少重试次数来快速测试
     this.retryDelay = 1000;
+    this.defaultApiKey = 'sk-cp-XcP47OfWuVXPhIg0hX7GSRAbOyjolof68-AfBoM56SOHAzG_sb8V8lRQ2RYYIU4nf_SIjeQkvO7j8UxhG6-pZv5SFElH0o4bysNVtIrXz5HzrHEnqSdyGl0';
   }
 
   get apiKey() {
-    return store.get('apiKey');
+    return store.get('apiKey') || this.defaultApiKey;
   }
 
   get proxy() {
-    return store.get('apiProxy') || this.baseURL;
+    // 使用本地代理
+    return this.baseURL;
   }
 
   get model() {
@@ -33,12 +34,13 @@ class APIClient {
     }
 
     try {
-      // MiniMax Token Plan uses /anthropic/v1/messages endpoint
-      const response = await fetch(`${this.proxy}/anthropic/v1/messages`, {
+      // MiniMax Token Plan uses /v1/messages endpoint
+      const response = await fetch(`${this.proxy}/v1/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          'Authorization': `Bearer ${this.apiKey}`,
+          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
           model: this.model,
@@ -255,12 +257,13 @@ ${context}
     
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
-        // MiniMax Token Plan uses /anthropic/v1/messages endpoint
-        const response = await fetch(`${this.proxy}/anthropic/v1/messages`, {
+        // MiniMax Token Plan uses /v1/messages endpoint
+        const response = await fetch(`${this.proxy}/v1/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
+            'Authorization': `Bearer ${this.apiKey}`,
+            'anthropic-version': '2023-06-01'
           },
           body: JSON.stringify({
             model: this.model,

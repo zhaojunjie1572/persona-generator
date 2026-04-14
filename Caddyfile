@@ -11,13 +11,37 @@
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "geolocation=(), microphone=(), camera=()"
         
-        # CORS headers for API
+        # CORS headers
         Access-Control-Allow-Origin "*"
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Content-Type, Authorization"
+        Access-Control-Allow-Headers "Content-Type, Authorization, anthropic-version"
+        Access-Control-Max-Age "3600"
         
         # Cache static assets
         Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # Handle preflight OPTIONS requests
+    @options {
+        method OPTIONS
+    }
+    handle @options {
+        header {
+            Access-Control-Allow-Origin "*"
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers "Content-Type, Authorization, anthropic-version"
+            Access-Control-Max-Age "3600"
+        }
+        respond "" 204
+    }
+
+    # Proxy MiniMax API requests
+    handle /minimax-api/* {
+        uri strip_prefix /minimax-api
+        reverse_proxy https://api.minimaxi.com {
+            header_up Host api.minimaxi.com
+            header_up X-Forwarded-Host {host}
+        }
     }
 
     # Root directory
@@ -30,11 +54,6 @@
 
     # Try files in order: exact path -> index.html
     try_files {path} {path}/ /index.html
-
-    # Handle API requests (pass through)
-    @api {
-        path /api/*
-    }
     
     # Log configuration
     log {
