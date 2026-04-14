@@ -5,8 +5,9 @@
 
 class APIClient {
   constructor() {
-    // MiniMax Token Plan uses api.minimax.io (not .chat)
-    this.baseURL = 'https://api.minimax.io';
+    // MiniMax 国内版使用 api.minimaxi.com
+    // 国际版使用 api.minimax.io
+    this.baseURL = 'https://api.minimaxi.com';
     this.retryAttempts = 3;
     this.retryDelay = 1000;
   }
