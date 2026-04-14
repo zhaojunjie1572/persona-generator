@@ -527,7 +527,7 @@ class UIManager {
       deepseekBtn?.classList.add('chip--active');
       if (apiKeyLabel) apiKeyLabel.textContent = 'DeepSeek API Key';
       if (modelInput) modelInput.placeholder = '默认: deepseek-chat';
-      if (proxyHint) proxyHint.textContent = '留空使用 api.deepseek.com';
+      if (proxyHint) proxyHint.textContent = '留空使用 api.deepseek.com，不要加 /v1';
     } else {
       minimaxBtn?.classList.add('chip--active');
       deepseekBtn?.classList.remove('chip--active');

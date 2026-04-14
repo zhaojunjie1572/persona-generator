@@ -19,7 +19,11 @@ class APIClient {
 
   get baseURL() {
     if (this.provider === 'deepseek') {
-      return store.get('apiProxy') || 'https://api.deepseek.com';
+      let proxy = store.get('apiProxy');
+      if (proxy) {
+        proxy = proxy.replace(/\/v1\/?$/, '');
+      }
+      return proxy || 'https://api.deepseek.com';
     }
     return '/minimax-api/anthropic';
   }
