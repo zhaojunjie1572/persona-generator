@@ -6,8 +6,9 @@
 class APIClient {
   constructor() {
     // 使用本地代理来避免CORS问题
+    // MiniMax Token Plan 使用 Anthropic 兼容格式
     this.baseURL = '/minimax-api/anthropic';
-    this.retryAttempts = 1; // 减少重试次数来快速测试
+    this.retryAttempts = 1;
     this.retryDelay = 1000;
     this.defaultApiKey = 'sk-cp-XcP47OfWuVXPhIg0hX7GSRAbOyjolof68-AfBoM56SOHAzG_sb8V8lRQ2RYYIU4nf_SIjeQkvO7j8UxhG6-pZv5SFElH0o4bysNVtIrXz5HzrHEnqSdyGl0';
   }
@@ -34,7 +35,7 @@ class APIClient {
     }
 
     try {
-      // MiniMax Token Plan uses /v1/messages endpoint
+      // MiniMax Token Plan 使用 Anthropic 兼容格式
       const response = await fetch(`${this.proxy}/v1/messages`, {
         method: 'POST',
         headers: {
@@ -44,7 +45,7 @@ class APIClient {
         },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: 'user', content: 'Hi' }],
+          messages: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
           max_tokens: 10
         })
       });
@@ -255,9 +256,20 @@ ${context}
     
     let lastError;
     
+    // Convert messages to Anthropic format if needed
+    const formattedMessages = messages.map(msg => {
+      if (typeof msg.content === 'string') {
+        return {
+          ...msg,
+          content: [{ type: 'text', text: msg.content }]
+        };
+      }
+      return msg;
+    });
+    
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
-        // MiniMax Token Plan uses /v1/messages endpoint
+        // MiniMax Token Plan 使用 Anthropic 兼容格式
         const response = await fetch(`${this.proxy}/v1/messages`, {
           method: 'POST',
           headers: {
@@ -267,7 +279,7 @@ ${context}
           },
           body: JSON.stringify({
             model: this.model,
-            messages,
+            messages: formattedMessages,
             temperature,
             max_tokens: maxTokens
           })
@@ -280,7 +292,7 @@ ${context}
 
         const result = await response.json();
         
-        // MiniMax Token Plan response format
+        // Anthropic response format - content is an array of blocks
         let content = '';
         if (result.content && Array.isArray(result.content)) {
           const textContent = result.content.find(c => c.type === 'text');
@@ -288,7 +300,7 @@ ${context}
         } else if (typeof result.content === 'string') {
           content = result.content;
         } else if (result.choices && result.choices[0]) {
-          // Fallback for other formats
+          // Fallback for OpenAI format
           content = result.choices[0].message?.content || result.choices[0].text || '';
         }
 
