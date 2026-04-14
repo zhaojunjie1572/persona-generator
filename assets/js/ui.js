@@ -796,18 +796,15 @@ class UIManager {
   }
 
   openSavedDrawer() {
-    console.log('openSavedDrawer called');
     store.set('activeGroup', '全部');
     this.renderGroupTabs();
     this.renderSavedList();
     
     const drawer = document.getElementById('savedDrawer');
-    console.log('Drawer element:', drawer);
     if (drawer) {
       drawer.classList.add('drawer-overlay--visible');
       document.body.style.overflow = 'hidden';
       store.set('activeDrawer', 'savedDrawer');
-      console.log('Drawer should be visible now');
     }
   }
 
@@ -836,7 +833,9 @@ class UIManager {
     const container = document.getElementById('savedList');
     if (!container) return;
 
-    const filtered = store.get('filteredPersonas');
+    const savedPersonas = store.get('savedPersonas') || [];
+    const activeGroup = store.get('activeGroup') || '全部';
+    const filtered = activeGroup === '全部' ? savedPersonas : savedPersonas.filter(p => p.group === activeGroup);
 
     if (filtered.length === 0) {
       container.innerHTML = `
