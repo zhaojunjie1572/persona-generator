@@ -796,10 +796,19 @@ class UIManager {
   }
 
   openSavedDrawer() {
+    console.log('openSavedDrawer called');
     store.set('activeGroup', '全部');
-    this.renderSavedList();
     this.renderGroupTabs();
-    this.openDrawer('savedDrawer');
+    this.renderSavedList();
+    
+    const drawer = document.getElementById('savedDrawer');
+    console.log('Drawer element:', drawer);
+    if (drawer) {
+      drawer.classList.add('drawer-overlay--visible');
+      document.body.style.overflow = 'hidden';
+      store.set('activeDrawer', 'savedDrawer');
+      console.log('Drawer should be visible now');
+    }
   }
 
   renderGroupTabs() {
