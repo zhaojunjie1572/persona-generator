@@ -382,6 +382,10 @@ class UIManager {
     store.set('isChatOpen', !store.get('isChatOpen'));
   }
 
+  toggleChatSettings() {
+    this.showToast('聊天设置功能开发中', 'info');
+  }
+
   async sendMessage() {
     const input = this.elements.chatInput;
     const message = input?.value.trim();
