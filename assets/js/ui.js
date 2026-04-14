@@ -667,7 +667,14 @@ class UIManager {
       return;
     }
 
-    store.set('debateParticipants', [{ ...persona, isBase: true }]);
+    let participants = store.get('debateParticipants') || [];
+    const hasCurrent = participants.some(p => p.id === persona.id);
+    
+    if (!hasCurrent) {
+      participants = [{ ...persona, isBase: true }, ...participants];
+    }
+    
+    store.set('debateParticipants', participants);
     store.set('debateRounds', 1);
     
     this.renderDebateParticipants();
