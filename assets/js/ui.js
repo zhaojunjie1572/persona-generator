@@ -726,12 +726,13 @@ class UIManager {
   updateProxyToggleUI() {
     const toggle = document.getElementById('useProxyToggle');
     if (toggle) {
+      const span = toggle.querySelector('span');
       if (store.get('useApiProxy')) {
         toggle.classList.add('active');
-        toggle.querySelector('span').style.transform = 'translateX(24px)';
+        if (span) span.style.transform = 'translateX(24px)';
       } else {
         toggle.classList.remove('active');
-        toggle.querySelector('span').style.transform = 'translateX(0)';
+        if (span) span.style.transform = 'translateX(0)';
       }
     }
   }
