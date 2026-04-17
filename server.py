@@ -87,10 +87,13 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
 
     def serve_static(self):
         """Serve static files - for health check and fallback"""
-        if self.path == '/' or self.path == '/index.html':
-            self.path = '/index.html'
+        # Remove query parameters from path
+        path = self.path.split('?')[0]
+        
+        if path == '/' or path == '/index.html':
+            path = '/index.html'
 
-        static_file = self.path.lstrip('/')
+        static_file = path.lstrip('/')
         static_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Security: prevent directory traversal
