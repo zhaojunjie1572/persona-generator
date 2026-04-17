@@ -3,5 +3,10 @@
   "outputDirectory": ".",
   "installCommand": "",
   "devCommand": "",
-  "framework": "static"
+  "framework": "docker",
+  "server": {
+    "port": 3000,
+    "installCommand": "",
+    "startCommand": "python server.py"
+  }
 }

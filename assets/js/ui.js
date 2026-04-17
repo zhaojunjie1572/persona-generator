@@ -703,13 +703,13 @@ class UIManager {
       deepseekBtn?.classList.add('chip--active');
       if (apiKeyLabel) apiKeyLabel.textContent = 'DeepSeek API Key';
       if (modelInput) modelInput.placeholder = '默认: deepseek-chat';
-      if (proxyHint) proxyHint.textContent = '留空使用 api.deepseek.com，不要加 /v1';
+      if (proxyHint) proxyHint.textContent = '使用代理模式时留空';
     } else {
       minimaxBtn?.classList.add('chip--active');
       deepseekBtn?.classList.remove('chip--active');
       if (apiKeyLabel) apiKeyLabel.textContent = 'MiniMax API Key';
       if (modelInput) modelInput.placeholder = '默认: MiniMax-M2.7';
-      if (proxyHint) proxyHint.textContent = 'MiniMax 留空使用默认代理';
+      if (proxyHint) proxyHint.textContent = '使用代理模式时留空';
     }
   }
 
