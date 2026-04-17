@@ -18,6 +18,11 @@ class APIClient {
   }
 
   get baseURL() {
+    const useProxy = store.get('useApiProxy');
+    if (useProxy) {
+      return '';
+    }
+
     if (this.provider === 'deepseek') {
       let proxy = store.get('apiProxy');
       if (proxy) {
@@ -29,6 +34,10 @@ class APIClient {
   }
 
   get proxy() {
+    const useProxy = store.get('useApiProxy');
+    if (useProxy) {
+      return '';
+    }
     return this.baseURL;
   }
 
@@ -284,13 +293,15 @@ ${context}
    */
   async chatCompletion(messages, options = {}) {
     const { temperature = 0.7, maxTokens = 2000 } = options;
-    
+
     let lastError;
-    
+    const useProxy = store.get('useApiProxy');
+
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
         if (this.provider === 'deepseek') {
-          const response = await fetch(`${this.proxy}/v1/chat/completions`, {
+          const url = useProxy ? '/v1/chat/completions' : `${this.proxy}/v1/chat/completions`;
+          const response = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -321,6 +332,7 @@ ${context}
           const content = result.choices?.[0]?.message?.content || '';
           return { content: content.trim(), raw: result };
         } else {
+          const url = useProxy ? '/v1/messages' : `${this.proxy}/v1/messages`;
           const formattedMessages = messages.map(msg => {
             if (typeof msg.content === 'string') {
               return {
@@ -331,7 +343,7 @@ ${context}
             return msg;
           });
 
-          const response = await fetch(`${this.proxy}/v1/messages`, {
+          const response = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -352,7 +364,7 @@ ${context}
           }
 
           const result = await response.json();
-          
+
           let content = '';
           if (result.content && Array.isArray(result.content)) {
             const textContent = result.content.find(c => c.type === 'text');

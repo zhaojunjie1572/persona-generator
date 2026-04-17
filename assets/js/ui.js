@@ -687,6 +687,7 @@ class UIManager {
       this.updateSyncStatus('');
     }
 
+    this.updateProxyToggleUI();
     this.openModal('settingsModal');
   }
 
@@ -715,6 +716,24 @@ class UIManager {
   setProvider(provider) {
     store.set('apiProvider', provider);
     this.updateProviderUI(provider);
+  }
+
+  toggleProxyMode() {
+    store.set('useApiProxy', !store.get('useApiProxy'));
+    this.updateProxyToggleUI();
+  }
+
+  updateProxyToggleUI() {
+    const toggle = document.getElementById('useProxyToggle');
+    if (toggle) {
+      if (store.get('useApiProxy')) {
+        toggle.classList.add('active');
+        toggle.querySelector('span').style.transform = 'translateX(24px)';
+      } else {
+        toggle.classList.remove('active');
+        toggle.querySelector('span').style.transform = 'translateX(0)';
+      }
+    }
   }
 
   saveSettings() {

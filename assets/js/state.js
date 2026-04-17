@@ -93,6 +93,7 @@ const store = new Store({
   apiProxy: localStorage.getItem('charrole_api_proxy') || '',
   apiProvider: localStorage.getItem('charrole_api_provider') || 'deepseek',
   modelName: localStorage.getItem('charrole_model') || 'deepseek-chat',
+  useApiProxy: localStorage.getItem('charrole_use_proxy') === 'true',
   apiStatus: 'none', // 'none' | 'ok' | 'error'
   
   // Current Persona
@@ -163,6 +164,10 @@ store.subscribe('apiProvider', (value) => {
 
 store.subscribe('modelName', (value) => {
   localStorage.setItem('charrole_model', value);
+});
+
+store.subscribe('useApiProxy', (value) => {
+  localStorage.setItem('charrole_use_proxy', String(value));
 });
 
 store.subscribe('savedPersonas', (value) => {
