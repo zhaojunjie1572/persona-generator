@@ -5,10 +5,16 @@
 
 class UIManager {
   constructor() {
-    this.elements = {};
-    this.cacheElements();
-    this.bindEvents();
-    this.setupStoreListeners();
+    try {
+      this.elements = {};
+      this.cacheElements();
+      this.bindEvents();
+      this.setupStoreListeners();
+      console.log('[UIManager] Initialized successfully');
+    } catch (error) {
+      console.error('[UIManager] Initialization error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -1509,5 +1515,11 @@ class UIManager {
 }
 
 // Export
-window.UIManager = UIManager;
-window.ui = new UIManager();
+try {
+  window.UIManager = UIManager;
+  window.ui = new UIManager();
+  console.log('[UI] ui object exported successfully:', window.ui);
+} catch (error) {
+  console.error('[UI] Failed to export ui:', error);
+  window.ui = null;
+}

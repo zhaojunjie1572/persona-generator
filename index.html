@@ -413,16 +413,38 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="assets/js/state.js?v=20260417120000"></script>
-  <script src="assets/js/api.js?v=20260417120000"></script>
-  <script src="assets/js/ui.js?v=20260417120000"></script>
+  <script>
+    // Global error handler
+    window.addEventListener('error', (e) => {
+      console.error('[Global Error]', e.message, 'at', e.filename, ':', e.lineno);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[Unhandled Promise Rejection]', e.reason);
+    });
+  </script>
+  <script src="assets/js/state.js?v=20260417130000"></script>
+  <script src="assets/js/api.js?v=20260417130000"></script>
+  <script src="assets/js/ui.js?v=20260417130000"></script>
   
   <script>
     // Initialize app
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('[App] DOMContentLoaded');
+      console.log('[App] store:', typeof store);
+      console.log('[App] api:', typeof api);
+      console.log('[App] ui:', typeof ui);
+      
+      // Check if ui is defined
+      if (typeof ui === 'undefined' || ui === null) {
+        console.error('[App] ui is not defined! Check ui.js for errors.');
+        return;
+      }
+      
       // Force reset loading state on page load
-      store.set('isGenerating', false);
-      store.set('generationProgress', '');
+      if (typeof store !== 'undefined') {
+        store.set('isGenerating', false);
+        store.set('generationProgress', '');
+      }
 
       // Directly hide loading area on page load
       const loadingArea = document.getElementById('loadingArea');
@@ -431,7 +453,7 @@
       }
 
       // Check for saved API key
-      if (store.get('apiKey')) {
+      if (typeof api !== 'undefined' && typeof store !== 'undefined' && store.get('apiKey')) {
         api.testConnection().catch(() => {});
       }
 
