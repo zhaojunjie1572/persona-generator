@@ -7,9 +7,8 @@ import json
 import os
 
 PORT = int(os.environ.get('PORT', 3000))
-STATIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
-class ServerHandler(http.server.SimpleHTTPRequestHandler):
+class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -19,92 +18,138 @@ class ServerHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if '/v1/chat/completions' in self.path:
-            self.proxy_deepseek()
-        elif '/v1/messages' in self.path:
-            self.proxy_minimax()
+        self.proxy_request()
+
+    def do_GET(self):
+        self.serve_static()
+
+    def proxy_request(self):
+        path = self.path
+        print(f'Proxy request: {path}')
+
+        # Determine target URL based on path
+        if '/v1/chat/completions' in path:
+            target_url = 'https://api.deepseek.com' + path
+        elif '/v1/messages' in path:
+            target_url = 'https://api.minimaxi.chat' + path
         else:
             self.send_error(404, 'Not Found')
+            return
 
-    def proxy_deepseek(self):
-        target_url = 'https://api.deepseek.com' + self.path.replace('/api', '')
-        self.proxy_request(target_url)
-
-    def proxy_minimax(self):
-        target_url = 'https://api.minimaxi.chat' + self.path.replace('/api', '')
-        self.proxy_request(target_url)
-
-    def proxy_request(self, target_url):
-        print(f'Proxying to: {target_url}')
-
+        # Read request body
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else None
 
+        # Create proxy request
         req = urllib.request.Request(target_url, data=body, method='POST')
         req.add_header('Content-Type', 'application/json')
 
+        # Copy authorization header
         auth = self.headers.get('Authorization')
         if auth:
             req.add_header('Authorization', auth)
 
+        # Add other headers
+        for header in ['Content-Length', 'anthropic-version']:
+            value = self.headers.get(header)
+            if value and header not in req.headers:
+                req.add_header(header, value)
+
         try:
             with urllib.request.urlopen(req, timeout=120) as response:
+                response_body = response.read()
                 self.send_response(response.status)
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', len(response_body))
                 self.end_headers()
-                self.wfile.write(response.read())
+                self.wfile.write(response_body)
+                print(f'Proxy success: {response.status}')
 
         except urllib.error.HTTPError as e:
+            error_body = e.read()
             self.send_response(e.code)
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', len(error_body))
             self.end_headers()
-            self.wfile.write(e.read())
+            self.wfile.write(error_body)
+            print(f'Proxy HTTP error: {e.code}')
 
         except Exception as e:
-            print(f'Error: {e}')
+            print(f'Proxy error: {e}')
+            error_json = json.dumps({'error': str(e)}).encode()
             self.send_response(500)
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', len(error_json))
             self.end_headers()
-            self.wfile.write(json.dumps({'error': str(e)}).encode())
+            self.wfile.write(error_json)
 
-    def send_head(self):
-        """Serve static files"""
-        path = self.translate_path(self.path)
-        if os.path.isdir(path):
-            path = os.path.join(path, 'index.html')
+    def serve_static(self):
+        """Serve static files - for health check and fallback"""
+        if self.path == '/' or self.path == '/index.html':
+            self.path = '/index.html'
 
-        try:
-            f = open(path, 'rb')
-        except IOError:
-            self.send_error(404, 'File not found')
-            return None
+        static_file = self.path.lstrip('/')
+        static_dir = os.path.dirname(os.path.abspath(__file__))
 
-        ctype = self.guess_type(path)
-        self.send_response(200)
-        self.send_header('Content-type', ctype)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        fs = os.fstat(f.fileno())
-        self.send_header('Content-Length', str(fs[6]))
-        self.send_header('Last-Modified', self.date_time_string(fs.st_mtime))
-        self.end_headers()
-        return f
+        # Security: prevent directory traversal
+        if '..' in static_file:
+            self.send_error(403, 'Forbidden')
+            return
 
-    def translate_path(self, path):
-        """Translate URL path to filesystem path"""
-        path = path.split('?', 1)[0]
-        path = path.split('#', 1)[0]
-        path = path.replace('/api', '')
-        return os.path.join(STATIC_DIR, path.lstrip('/'))
+        file_path = os.path.join(static_dir, static_file)
+
+        if os.path.isdir(file_path):
+            file_path = os.path.join(file_path, 'index.html')
+
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                if file_path.endswith('.html'):
+                    self.send_header('Content-Type', 'text/html')
+                elif file_path.endswith('.js'):
+                    self.send_header('Content-Type', 'application/javascript')
+                elif file_path.endswith('.css'):
+                    self.send_header('Content-Type', 'text/css')
+                elif file_path.endswith('.json'):
+                    self.send_header('Content-Type', 'application/json')
+                else:
+                    self.send_header('Content-Type', 'application/octet-stream')
+                self.send_header('Content-Length', len(content))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                print(f'Error serving file: {e}')
+                self.send_error(500, 'Server Error')
+        else:
+            # Fallback to index.html for SPA routing
+            index_path = os.path.join(static_dir, 'index.html')
+            if os.path.isfile(index_path):
+                try:
+                    with open(index_path, 'rb') as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html')
+                    self.send_header('Content-Length', len(content))
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(content)
+                except:
+                    self.send_error(500, 'Server Error')
+            else:
+                self.send_error(404, 'Not Found')
 
     def log_message(self, format, *args):
-        print(f'{self.address_string()} - [{self.log_date_time_string()}] {format % args}')
+        print(f'[{self.log_date_time_string()}] {format % args}')
 
 def main():
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(('', PORT), ServerHandler) as httpd:
-        print(f'Server running on port {PORT}')
-        print(f'Serving static files from {STATIC_DIR}')
+    with socketserver.TCPServer(('', PORT), ProxyHandler) as httpd:
+        print(f'Server running on http://0.0.0.0:{PORT}')
         httpd.serve_forever()
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ class APIClient {
   get proxy() {
     const useProxy = store.get('useApiProxy');
     if (useProxy) {
-      return '/api';
+      return '';
     }
     return this.baseURL;
   }
