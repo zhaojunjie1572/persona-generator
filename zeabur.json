@@ -1,7 +1,3 @@
 {
-  "buildCommand": "",
-  "outputDirectory": ".",
-  "installCommand": "",
-  "devCommand": "",
-  "framework": "docker"
+  "type": "docker"
 }
