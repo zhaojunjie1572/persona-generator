@@ -421,7 +421,8 @@ ${context}
     }, null, 2);
 
     const headers = {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json'
     };
 
@@ -438,8 +439,15 @@ ${context}
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `HTTP ${response.status}`);
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error?.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
     } else {
       // Create new Gist
@@ -456,8 +464,15 @@ ${context}
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `HTTP ${response.status}`);
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error?.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -481,17 +496,25 @@ ${context}
 
     const response = await fetch(`https://api.github.com/gists/${gistId}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `token ${token}`,
         'Accept': 'application/vnd.github.v3+json'
       }
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorMessage;
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
       if (response.status === 404) {
         store.set('gistId', '');
         throw new Error('Gist 不存在或已删除');
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
