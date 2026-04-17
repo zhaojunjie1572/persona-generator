@@ -369,8 +369,8 @@
   transform: translateX(-50%) translateY(0);
 }
 
-#debateChatPanel {
-  z-index: 450;
+#debateChatPanel.chat-panel--open {
+  z-index: var(--z-modal);
 }
 
 .chat-panel__header {

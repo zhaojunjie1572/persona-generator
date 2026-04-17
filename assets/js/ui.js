@@ -171,8 +171,18 @@ class UIManager {
    * Toggle loading state
    */
   toggleLoading(isLoading) {
-    this.elements.loadingArea?.classList.toggle('show', isLoading);
-    this.elements.generateBtn && (this.elements.generateBtn.disabled = isLoading);
+    const loadingArea = document.getElementById('loadingArea');
+    if (loadingArea) {
+      if (isLoading) {
+        loadingArea.classList.add('show');
+      } else {
+        loadingArea.classList.remove('show');
+      }
+    }
+    const generateBtn = document.getElementById('generateBtn');
+    if (generateBtn) {
+      generateBtn.disabled = isLoading;
+    }
   }
 
   /**
@@ -309,11 +319,13 @@ class UIManager {
    * Render skills
    */
   renderSkills(skills) {
+    if (!Array.isArray(skills) || skills.length === 0) return '';
+
     const skillsHtml = skills.map(skill => `
       <div class="skill-item">
         <span class="skill-item__icon">⚡</span>
         <div class="skill-item__info">
-          <div class="skill-item__name">${skill.name}</div>
+          <div class="skill-item__name">${skill.name || ''}</div>
           <div class="skill-item__desc">${skill.description || ''}</div>
         </div>
         <span class="skill-item__level">${skill.level || '-'}</span>
@@ -332,9 +344,11 @@ class UIManager {
    * Render quotes
    */
   renderQuotes(quotes) {
+    if (!Array.isArray(quotes) || quotes.length === 0) return '';
+
     const quotesHtml = quotes.map(quote => `
       <div class="quote-card">
-        <p class="quote-card__text">"${quote.text}"</p>
+        <p class="quote-card__text">"${quote.text || ''}"</p>
         ${quote.source ? `<span class="quote-card__source">— ${quote.source}</span>` : ''}
       </div>
     `).join('');
@@ -351,21 +365,27 @@ class UIManager {
    * Render chat style
    */
   renderChatStyle(style) {
-    const examples = style.examples?.map(ex => `
+    if (!style) return '';
+
+    const examples = Array.isArray(style.examples) ? style.examples.map(ex => `
       <div class="chat-example">
         <span class="chat-example__role chat-example__role--user">用户</span>
-        <p class="chat-example__text">${ex.user}</p>
+        <p class="chat-example__text">${ex.user || ''}</p>
         <span class="chat-example__role chat-example__role--ai">${store.get('currentPersona')?.name || 'AI'}</span>
-        <p class="chat-example__text">${ex.ai}</p>
+        <p class="chat-example__text">${ex.ai || ''}</p>
       </div>
-    `).join('') || '';
+    `).join('') : '';
+
+    const patternsHtml = Array.isArray(style.patterns) && style.patterns.length
+      ? `<p><strong>说话模式：</strong>${style.patterns.join('、')}</p>`
+      : '';
 
     return `
       <div class="info-section">
         <h3 class="info-section__title">🗣️ 对话风格</h3>
         <div class="info-section__content">
           <p><strong>语气：</strong>${style.tone || '未指定'}</p>
-          ${style.patterns?.length ? `<p><strong>说话模式：</strong>${style.patterns.join('、')}</p>` : ''}
+          ${patternsHtml}
           ${examples}
         </div>
       </div>
@@ -394,10 +414,6 @@ class UIManager {
 
   toggleChat() {
     store.set('isChatOpen', !store.get('isChatOpen'));
-  }
-
-  toggleChatSettings() {
-    this.showToast('聊天设置功能开发中', 'info');
   }
 
   async sendMessage() {
@@ -453,7 +469,10 @@ class UIManager {
         <div class="chat-message__avatar">👤</div>
         <div class="chat-message__content">
           <div class="chat-message__text">${this.escapeHtml(msg.user)}</div>
-          <div class="chat-message__time">${this.formatTime()}</div>
+          <div class="chat-message__actions">
+            <button class="tts-btn" onclick="ui.speak('${this.escapeHtml(msg.user).replace(/'/g, "\\'")}')" title="朗读">🔊</button>
+            <span class="chat-message__time">${this.formatTime()}</span>
+          </div>
         </div>
       </div>
       ${msg.ai ? `
@@ -461,7 +480,10 @@ class UIManager {
           <div class="chat-message__avatar">${persona?.emoji || '🎭'}</div>
           <div class="chat-message__content">
             <div class="chat-message__text">${this.formatMessage(msg.ai)}</div>
-            <div class="chat-message__time">${this.formatTime()}</div>
+            <div class="chat-message__actions">
+              <button class="tts-btn" onclick="ui.speak('${this.escapeHtml(msg.ai).replace(/'/g, "\\'")}')" title="朗读">🔊</button>
+              <span class="chat-message__time">${this.formatTime()}</span>
+            </div>
           </div>
         </div>
       ` : ''}
@@ -499,12 +521,130 @@ class UIManager {
   exportChat() {
     const history = store.get('chatHistory');
     const persona = store.get('currentPersona');
-    
-    const content = history.map(h => 
+
+    const content = history.map(h =>
       `用户：${h.user}\n${persona?.name}：${h.ai || '[无回复]'}`
     ).join('\n\n---\n\n');
 
     this.downloadFile(content, `chat-${persona?.name || 'export'}.txt`, 'text/plain');
+  }
+
+  /**
+   * TTS Functions
+   */
+  getVoices() {
+    return new Promise((resolve) => {
+      const voices = speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        resolve(voices);
+      } else {
+        speechSynthesis.onvoiceschanged = () => {
+          resolve(speechSynthesis.getVoices());
+        };
+      }
+    });
+  }
+
+  async speak(text, voiceName = null) {
+    if (!store.get('ttsEnabled')) return;
+
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+
+    const textToSpeak = text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+
+    const voices = await this.getVoices();
+    const selectedVoice = voiceName || store.get('ttsVoice');
+
+    if (selectedVoice) {
+      const voice = voices.find(v => v.name === selectedVoice);
+      if (voice) utterance.voice = voice;
+    } else {
+      // Default to Chinese voice if available
+      const chineseVoice = voices.find(v => v.lang.includes('zh'));
+      if (chineseVoice) utterance.voice = chineseVoice;
+    }
+
+    utterance.rate = store.get('ttsSpeed') || 1.0;
+    utterance.pitch = 1.0;
+
+    speechSynthesis.speak(utterance);
+  }
+
+  stopSpeaking() {
+    speechSynthesis.cancel();
+  }
+
+  openTtsSettings() {
+    this.renderTtsVoiceList();
+    this.updateTtsToggleUI();
+    this.openModal('ttsSettingsModal');
+  }
+
+  updateTtsToggleUI() {
+    const toggle = document.getElementById('ttsToggle');
+    const speedSlider = document.getElementById('ttsSpeedSlider');
+    if (toggle) {
+      if (store.get('ttsEnabled')) {
+        toggle.classList.add('active');
+      } else {
+        toggle.classList.remove('active');
+      }
+    }
+    if (speedSlider) {
+      speedSlider.value = store.get('ttsSpeed') || 1.0;
+    }
+    const speedValue = document.getElementById('ttsSpeedValue');
+    if (speedValue) {
+      speedValue.textContent = (store.get('ttsSpeed') || 1.0).toFixed(1);
+    }
+  }
+
+  async renderTtsVoiceList() {
+    const voices = await this.getVoices();
+    const selectedVoice = store.get('ttsVoice');
+    const currentSpeed = store.get('ttsSpeed') || 1.0;
+
+    const container = document.getElementById('ttsVoiceList');
+    if (!container) return;
+
+    // Filter Chinese voices first, then others
+    const chineseVoices = voices.filter(v => v.lang.includes('zh'));
+    const otherVoices = voices.filter(v => !v.lang.includes('zh'));
+    const sortedVoices = [...chineseVoices, ...otherVoices];
+
+    container.innerHTML = sortedVoices.map(v => `
+      <div class="tts-voice-item ${v.name === selectedVoice ? 'tts-voice-item--active' : ''}"
+           onclick="ui.selectTtsVoice('${v.name}', '${v.lang}')">
+        <span class="tts-voice-item__name">${v.name}</span>
+        <span class="tts-voice-item__lang">${v.lang}</span>
+      </div>
+    `).join('');
+
+    // Update speed display
+    const speedDisplay = document.getElementById('ttsSpeedValue');
+    if (speedDisplay) speedDisplay.textContent = currentSpeed.toFixed(1);
+  }
+
+  selectTtsVoice(name, lang) {
+    store.set('ttsVoice', name);
+    this.renderTtsVoiceList();
+  }
+
+  setTtsSpeed(speed) {
+    store.set('ttsSpeed', speed);
+    const speedDisplay = document.getElementById('ttsSpeedValue');
+    if (speedDisplay) speedDisplay.textContent = speed.toFixed(1);
+  }
+
+  toggleTts() {
+    store.set('ttsEnabled', !store.get('ttsEnabled'));
+    if (!store.get('ttsEnabled')) {
+      this.stopSpeaking();
+    }
+    this.updateTtsToggleUI();
   }
 
   /**
@@ -532,10 +672,21 @@ class UIManager {
     document.getElementById('apiKeyInput') && (document.getElementById('apiKeyInput').value = store.get('apiKey'));
     document.getElementById('apiProxyInput') && (document.getElementById('apiProxyInput').value = store.get('apiProxy'));
     document.getElementById('modelNameInput') && (document.getElementById('modelNameInput').value = store.get('modelName'));
+    document.getElementById('githubTokenInput') && (document.getElementById('githubTokenInput').value = store.get('githubToken'));
 
     const provider = store.get('apiProvider') || 'minimax';
     this.updateProviderUI(provider);
-    
+
+    // Update sync status
+    const lastSync = store.get('lastSyncTime');
+    if (lastSync) {
+      this.updateSyncStatus(`上次同步: ${new Date(lastSync).toLocaleString('zh-CN')}`);
+    } else if (store.get('gistId')) {
+      this.updateSyncStatus('已配置 Gist');
+    } else {
+      this.updateSyncStatus('');
+    }
+
     this.openModal('settingsModal');
   }
 
@@ -580,8 +731,86 @@ class UIManager {
     store.set('apiProxy', proxy);
     store.set('modelName', model);
 
+    // Save GitHub Token separately
+    const githubToken = document.getElementById('githubTokenInput')?.value.trim();
+    if (githubToken) {
+      store.set('githubToken', githubToken);
+    }
+
     this.closeModal();
     this.showToast('设置已保存', 'success');
+  }
+
+  async syncToGist() {
+    const githubToken = document.getElementById('githubTokenInput')?.value.trim();
+    if (githubToken) {
+      store.set('githubToken', githubToken);
+    }
+
+    if (!store.get('githubToken')) {
+      this.showToast('请先输入 GitHub Token', 'warning');
+      return;
+    }
+
+    const saved = store.get('savedPersonas');
+    if (saved.length === 0) {
+      this.showToast('没有已保存的人物', 'warning');
+      return;
+    }
+
+    try {
+      this.updateSyncStatus('同步中...');
+      await api.syncToGist(saved);
+      this.updateSyncStatus(`同步成功！${saved.length} 个人物`);
+      this.showToast('同步成功', 'success');
+    } catch (error) {
+      this.updateSyncStatus(`同步失败: ${error.message}`);
+      this.showToast(error.message, 'error');
+    }
+  }
+
+  async restoreFromGist() {
+    const githubToken = document.getElementById('githubTokenInput')?.value.trim();
+    if (githubToken) {
+      store.set('githubToken', githubToken);
+    }
+
+    if (!store.get('githubToken')) {
+      this.showToast('请先输入 GitHub Token', 'warning');
+      return;
+    }
+
+    if (!confirm('从 Gist 恢复会覆盖本地数据，确定继续吗？')) return;
+
+    try {
+      this.updateSyncStatus('恢复中...');
+      const data = await api.fetchFromGist();
+
+      if (data.personas && Array.isArray(data.personas)) {
+        store.set('savedPersonas', data.personas);
+        this.updateSyncStatus(`恢复成功！${data.personas.length} 个人物`);
+        this.showToast(`恢复成功！${data.personas.length} 个人物`, 'success');
+      } else {
+        throw new Error('数据格式错误');
+      }
+    } catch (error) {
+      this.updateSyncStatus(`恢复失败: ${error.message}`);
+      this.showToast(error.message, 'error');
+    }
+  }
+
+  updateSyncStatus(text) {
+    const el = document.getElementById('syncStatus');
+    if (el) {
+      el.textContent = text;
+      if (text.includes('成功')) {
+        el.style.color = 'var(--color-accent-gold)';
+      } else if (text.includes('失败')) {
+        el.style.color = 'var(--color-error)';
+      } else {
+        el.style.color = 'var(--text-muted)';
+      }
+    }
   }
 
   async testApi() {
@@ -642,7 +871,7 @@ class UIManager {
 
     const saved = store.get('savedPersonas');
     const existingIndex = saved.findIndex(p => p.name === persona.name);
-    
+
     const personaToSave = {
       ...persona,
       group: store.get('activeGroup') || '默认',
@@ -657,6 +886,7 @@ class UIManager {
 
     store.set('savedPersonas', saved);
     this.closeModal();
+    this.renderSavedList();
     this.showToast('人物已保存', 'success');
   }
 
@@ -706,8 +936,8 @@ class UIManager {
       container.innerHTML = saved.map(p => {
         const isAdded = participantIds.has(p.id);
         return `
-          <div class="saved-item" style="cursor: ${isAdded ? 'not-allowed' : 'pointer'}; opacity: ${isAdded ? '0.5' : '1'}" 
-               onclick="${isAdded ? '' : `ui.addPersonaToDebate('${p.id}')`}">
+          <div class="saved-item" style="cursor: ${isAdded ? 'not-allowed' : 'pointer'}; opacity: ${isAdded ? '0.5' : '1'}"
+               ${isAdded ? '' : `onclick="ui.addPersonaToDebate('${p.id}')"`}>
             <span class="emoji">${p.emoji}</span>
             <div class="info">
               <div class="name">${p.name}${isAdded ? ' ✓ 已添加' : ''}</div>
@@ -735,7 +965,7 @@ class UIManager {
 
     const participants = store.get('debateParticipants') || [];
     const exists = participants.some(p => p.id === persona.id);
-    
+
     if (!exists) {
       participants.push({ ...persona, isBase: false });
       store.set('debateParticipants', participants);
@@ -762,6 +992,7 @@ class UIManager {
     store.set('debateCurrentRound', 0);
     store.set('debateMessages', []);
     store.set('isDebateActive', true);
+    store.set('isDebateRunning', false);
 
     const debateModal = document.getElementById('debateModal');
     if (debateModal) {
@@ -786,6 +1017,7 @@ class UIManager {
 
   stopDebate() {
     store.set('isDebateActive', false);
+    store.set('isDebateRunning', false);
     if (this.elements.debateChatStatus) {
       this.elements.debateChatStatus.textContent = '已停止';
     }
@@ -799,8 +1031,16 @@ class UIManager {
     let messages = store.get('debateMessages');
     let currentRound = store.get('debateCurrentRound');
 
+    // Guard against concurrent execution
+    if (store.get('isDebateRunning')) {
+      this.showToast('论道正在进行中...', 'warning');
+      return;
+    }
+    store.set('isDebateRunning', true);
+
     if (currentRound >= totalRounds) {
       this.showToast('论道已完成！', 'info');
+      store.set('isDebateRunning', false);
       return;
     }
 
@@ -809,44 +1049,51 @@ class UIManager {
     }
 
     for (let round = currentRound; round < totalRounds; round++) {
+      // Check if debate was stopped
+      if (!store.get('isDebateActive')) {
+        store.set('isDebateRunning', false);
+        return;
+      }
+
       for (let i = 0; i < participants.length; i++) {
         const persona = participants[i];
-        
+
         if (this.elements.debateChatStatus) {
-          this.elements.debateChatStatus.textContent = `${persona.name} 思考中...`;
+          this.elements.debateChatStatus.textContent = `${persona.name} 思考中... (第${round + 1}/${totalRounds}轮)`;
         }
 
         try {
           const response = await api.generateDebateMessage(
-            persona, 
-            topic, 
-            round + 1, 
+            persona,
+            topic,
+            round + 1,
             messages
           );
-          
+
           const newMessage = {
             persona: persona,
             text: response,
             round: round + 1,
             timestamp: Date.now()
           };
-          
+
           messages.push(newMessage);
           store.set('debateMessages', [...messages]);
           this.renderDebateMessages();
-          
+
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
         } catch (error) {
           console.error('Debate error:', error);
           this.showToast(`${persona.name} 发言失败`, 'error');
         }
       }
-      
+
       currentRound = round + 1;
       store.set('debateCurrentRound', currentRound);
     }
 
+    store.set('isDebateRunning', false);
     if (this.elements.debateChatStatus) {
       this.elements.debateChatStatus.textContent = '论道完成！';
     }
@@ -878,7 +1125,10 @@ class UIManager {
             <span style="font-size: var(--text-xs); color: var(--text-muted);">第 ${msg.round} 轮</span>
           </div>
           <div class="chat-message__text">${this.formatMessage(msg.text)}</div>
-          <div class="chat-message__time">${this.formatTime(msg.timestamp)}</div>
+          <div class="chat-message__actions">
+            <button class="tts-btn" onclick="ui.speak('${this.escapeHtml(msg.text).replace(/'/g, "\\'")}')" title="朗读">🔊</button>
+            <span class="chat-message__time">${this.formatTime(msg.timestamp)}</span>
+          </div>
         </div>
       </div>
     `).join('');
@@ -1045,24 +1295,6 @@ class UIManager {
     }
   }
 
-  addPersonaToDebate(id) {
-    const saved = store.get('savedPersonas');
-    const persona = saved.find(p => p.id === id);
-    if (!persona) return;
-
-    const participants = store.get('debateParticipants') || [];
-    const exists = participants.some(p => p.id === persona.id);
-    
-    if (!exists) {
-      participants.push({ ...persona, isBase: false });
-      store.set('debateParticipants', participants);
-      this.showToast(`已添加：${persona.name}`, 'success');
-    }
-    
-    this.renderSavedList();
-    this.renderDebateParticipants();
-  }
-
   /**
    * Export/Import
    */
@@ -1074,21 +1306,106 @@ class UIManager {
     this.downloadFile(data, `${persona.name}.json`, 'application/json');
   }
 
-  importPersonaFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  exportAllPersonas() {
+    const saved = store.get('savedPersonas');
+    if (saved.length === 0) {
+      this.showToast('没有已保存的人物', 'warning');
+      return;
+    }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const persona = JSON.parse(e.target.result);
-        store.set('currentPersona', persona);
-        this.showToast('导入成功', 'success');
-      } catch (error) {
-        this.showToast('文件格式错误', 'error');
-      }
+    const exportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      personas: saved
     };
-    reader.readAsText(file);
+
+    const filename = `charrole-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    this.downloadFile(JSON.stringify(exportData, null, 2), filename, 'application/json');
+    this.showToast(`已导出 ${saved.length} 个人物`, 'success');
+  }
+
+  importPersonaFile(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const saved = store.get('savedPersonas');
+
+    const processFile = (file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+
+            let personas = [];
+            if (data.personas && Array.isArray(data.personas)) {
+              personas = data.personas;
+            } else if (Array.isArray(data)) {
+              personas = data;
+            } else if (data.name) {
+              personas = [data];
+            } else {
+              errorCount++;
+              resolve();
+              return;
+            }
+
+            personas.forEach(persona => {
+              if (!persona.name) return;
+
+              // Generate default avatar if not exists or invalid
+              if (!persona.avatar || !persona.avatar.includes('dicebear.com')) {
+                persona.avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(persona.name)}&backgroundColor=b6e3f4`;
+              }
+
+              const newPersona = {
+                ...persona,
+                id: api.generateId(),
+                savedAt: new Date().toISOString()
+              };
+              delete newPersona.isBase;
+
+              const existingIndex = saved.findIndex(p => p.name === persona.name);
+              if (existingIndex >= 0) {
+                saved[existingIndex] = newPersona;
+                updatedCount++;
+              } else {
+                saved.push(newPersona);
+                addedCount++;
+              }
+            });
+            resolve();
+          } catch (error) {
+            errorCount++;
+            resolve();
+          }
+        };
+        reader.readAsText(file);
+      });
+    };
+
+    Promise.all(files.map(processFile)).then(() => {
+      if (addedCount > 0 || updatedCount > 0) {
+        store.set('savedPersonas', saved);
+        this.renderSavedList();
+      }
+
+      let message = '';
+      if (addedCount > 0) message += `新增 ${addedCount} 个`;
+      if (updatedCount > 0) message += `${message ? '，' : ''}更新 ${updatedCount} 个`;
+      if (errorCount > 0) message += `${message ? '，' : ''}失败 ${errorCount} 个`;
+
+      if (addedCount > 0 || updatedCount > 0) {
+        this.showToast(message || '导入完成', 'success');
+      } else {
+        this.showToast('未找到有效人物数据', 'error');
+      }
+
+      event.target.value = '';
+    });
   }
 
   downloadFile(content, filename, type) {

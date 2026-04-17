@@ -41,10 +41,13 @@
           <button class="btn btn--ghost btn--sm" onclick="ui.openSavedDrawer()">
             📚 已保存 (<span id="savedCount">0</span>)
           </button>
+          <button class="btn btn--ghost btn--sm" onclick="ui.exportAllPersonas()">
+            📤 导出全部
+          </button>
           <button class="btn btn--ghost btn--sm" onclick="document.getElementById('fileImport').click()">
             📥 导入
           </button>
-          <input type="file" id="fileImport" accept=".json" hidden onchange="ui.importPersonaFile(event)">
+          <input type="file" id="fileImport" accept=".json" multiple hidden onchange="ui.importPersonaFile(event)">
           <button class="btn btn--icon btn--ghost" onclick="ui.openSettings()" title="设置">
             ⚙️
           </button>
@@ -86,13 +89,6 @@
           </div>
         </section>
 
-        <!-- Loading -->
-        <div class="loading" id="loadingArea">
-          <div class="spinner spinner--lg"></div>
-          <p>正在生成人物设定...</p>
-          <p class="progress" id="progressText">准备中...</p>
-        </div>
-
         <!-- Results -->
         <section class="results-section" id="resultArea"></section>
       </div>
@@ -109,7 +105,7 @@
           </div>
         </div>
         <div class="chat-panel__actions">
-          <button class="btn btn--icon btn--ghost" onclick="ui.toggleChatSettings()" title="设置">⚙️</button>
+          <button class="btn btn--icon btn--ghost" onclick="ui.openTtsSettings()" title="TTS设置">🔊</button>
           <button class="btn btn--icon btn--ghost" onclick="ui.exportChat()" title="导出">📤</button>
           <button class="btn btn--icon btn--ghost" onclick="ui.clearChat()" title="清空">🗑️</button>
           <button class="btn btn--icon btn--ghost" onclick="ui.toggleChat()" title="关闭">✕</button>
@@ -212,8 +208,29 @@
           </label>
           <input type="text" class="input" id="modelNameInput" placeholder="默认: deepseek-chat" value="deepseek-chat">
         </div>
+
+        <div style="border-top: 1px solid var(--border-color); margin: 16px 0; padding-top: 16px;">
+          <h4 style="color: var(--text-primary); font-size: var(--text-sm); margin-bottom: 12px;">☁️ GitHub Gist 同步</h4>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 6px;">
+              GitHub Personal Access Token
+            </label>
+            <input type="password" class="input" id="githubTokenInput" placeholder="需要 gist 权限">
+            <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
+              在 GitHub Settings > Developer settings > Personal access tokens 生成
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn--secondary btn--sm" onclick="ui.syncToGist()">📤 同步到 Gist</button>
+            <button class="btn btn--secondary btn--sm" onclick="ui.restoreFromGist()">📥 从 Gist 恢复</button>
+          </div>
+
+          <p id="syncStatus" style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 8px;"></p>
+        </div>
       </div>
-      
+
       <div class="modal__footer" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
         <button class="btn btn--ghost" onclick="ui.closeModal()">取消</button>
         <button class="btn btn--secondary" onclick="ui.testApi()">测试连接</button>
@@ -321,6 +338,49 @@
     </div>
   </div>
 
+  <!-- TTS Settings Modal -->
+  <div class="modal-overlay" id="ttsSettingsModal">
+    <div class="modal" style="max-width: 450px;">
+      <div class="modal__header">
+        <h3 class="modal__title">🔊 朗读设置</h3>
+        <button class="modal__close" onclick="ui.closeModal()">×</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="color: var(--text-secondary); font-size: var(--text-sm);">启用朗读</label>
+            <button class="toggle-btn" id="ttsToggle" onclick="ui.toggleTts()" style="width: 48px; height: 24px; border-radius: 12px; background: var(--bg-tertiary); border: none; cursor: pointer; position: relative;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; background: white; position: absolute; top: 2px; left: 2px; transition: transform 0.2s;"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 8px;">
+            语速：<span id="ttsSpeedValue">1.0</span>
+          </label>
+          <input type="range" id="ttsSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0"
+                 oninput="ui.setTtsSpeed(parseFloat(this.value))"
+                 style="width: 100%; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
+            <span>慢</span>
+            <span>正常</span>
+            <span>快</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display: block; color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 8px;">
+            音色选择
+          </label>
+          <div id="ttsVoiceList" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 8px;">
+            <div style="color: var(--text-muted); text-align: center; padding: 20px;">加载中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Saved Drawer -->
   <div class="drawer-overlay" id="savedDrawer">
     <div class="drawer">
@@ -349,12 +409,18 @@
       // Force reset loading state on page load
       store.set('isGenerating', false);
       store.set('generationProgress', '');
-      
+
+      // Directly hide loading area on page load
+      const loadingArea = document.getElementById('loadingArea');
+      if (loadingArea) {
+        loadingArea.classList.remove('show');
+      }
+
       // Check for saved API key
       if (store.get('apiKey')) {
         api.testConnection().catch(() => {});
       }
-      
+
       // Register service worker for PWA
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(console.error);

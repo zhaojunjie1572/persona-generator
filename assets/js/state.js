@@ -107,6 +107,16 @@ const store = new Store({
     temperature: 0.7,
     maxTokens: 4096
   },
+
+  // TTS Settings
+  ttsVoice: localStorage.getItem('charrole_tts_voice') || '',
+  ttsSpeed: parseFloat(localStorage.getItem('charrole_tts_speed') || '1.0'),
+  ttsEnabled: true,
+
+  // GitHub Gist Sync
+  githubToken: localStorage.getItem('charrole_github_token') || '',
+  gistId: localStorage.getItem('charrole_gist_id') || '',
+  lastSyncTime: localStorage.getItem('charrole_last_sync') || '',
   
   // Saved Personas
   savedPersonas: JSON.parse(localStorage.getItem('charrole_saved') || '[]'),
@@ -120,6 +130,7 @@ const store = new Store({
   debateTopic: '',
   debateMessages: [],
   isDebateActive: false,
+  isDebateRunning: false,
   
   // UI State
   activeModal: null,
@@ -160,6 +171,26 @@ store.subscribe('savedPersonas', (value) => {
 
 store.subscribe('savedGroups', (value) => {
   localStorage.setItem('charrole_groups', JSON.stringify(value));
+});
+
+store.subscribe('ttsVoice', (value) => {
+  localStorage.setItem('charrole_tts_voice', value);
+});
+
+store.subscribe('ttsSpeed', (value) => {
+  localStorage.setItem('charrole_tts_speed', String(value));
+});
+
+store.subscribe('githubToken', (value) => {
+  localStorage.setItem('charrole_github_token', value);
+});
+
+store.subscribe('gistId', (value) => {
+  localStorage.setItem('charrole_gist_id', value);
+});
+
+store.subscribe('lastSyncTime', (value) => {
+  localStorage.setItem('charrole_last_sync', value);
 });
 
 // Export for use in other modules

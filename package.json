@@ -1,0 +1,9 @@
+{
+  "name": "persona-generator",
+  "version": "1.0.0",
+  "description": "AI人物重现器 - CharRole",
+  "scripts": {
+    "dev": "npx serve -l 3000",
+    "start": "npx serve -l 3000"
+  }
+}

@@ -202,7 +202,7 @@ class APIClient {
 
     return this.chatCompletion(messages, {
       temperature: settings.temperature,
-      maxTokens: settings.maxTokens
+      maxTokens: 800
     });
   }
 
@@ -235,7 +235,7 @@ class APIClient {
       const response = await this.chatCompletion([
         { role: 'system', content: context },
         { role: 'user', content: '请发表你的观点。' }
-      ], { temperature: 0.8, maxTokens: 1500 });
+      ], { temperature: 0.8, maxTokens: 800 });
 
       return response.content;
     } catch (error) {
@@ -389,6 +389,110 @@ ${context}
    */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * GitHub Gist Sync
+   */
+  async syncToGist(data) {
+    const token = store.get('githubToken');
+    if (!token) {
+      throw new Error('请先配置 GitHub Token');
+    }
+
+    const gistId = store.get('gistId');
+    const filename = 'charrole-backup.json';
+    const content = JSON.stringify({
+      version: '1.0',
+      syncDate: new Date().toISOString(),
+      personas: data
+    }, null, 2);
+
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+
+    if (gistId) {
+      // Update existing Gist
+      const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          files: {
+            [filename]: { content }
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+    } else {
+      // Create new Gist
+      const response = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          description: 'CharRole Persona Backup',
+          public: false,
+          files: {
+            [filename]: { content }
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      store.set('gistId', result.id);
+    }
+
+    store.set('lastSyncTime', new Date().toISOString());
+    return { success: true };
+  }
+
+  async fetchFromGist() {
+    const token = store.get('githubToken');
+    if (!token) {
+      throw new Error('请先配置 GitHub Token');
+    }
+
+    const gistId = store.get('gistId');
+    if (!gistId) {
+      throw new Error('暂无同步记录');
+    }
+
+    const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        store.set('gistId', '');
+        throw new Error('Gist 不存在或已删除');
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    const filename = 'charrole-backup.json';
+
+    if (!result.files || !result.files[filename]) {
+      throw new Error('Gist 中没有备份文件');
+    }
+
+    const content = result.files[filename].content;
+    const data = JSON.parse(content);
+
+    return data;
   }
 }
 
